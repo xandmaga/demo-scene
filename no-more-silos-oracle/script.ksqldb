@@ -1,0 +1,13 @@
+set 'auto.offset.reset' = 'earliest';
+create stream processos_str (ID_PROCESSO_TRF bigint, NR_SEQUENCIA int, NR_DIGITO_VERIFICADOR int, NR_ANO int, NR_IDENTIFICACAO_ORGAO_JUSTICA int, CD_PROCESSO_STATUS string) with (kafka_topic='7cfb0dfca363.DEBEZIUM.PE_TB_PROCESSO_TRF', value_format='AVRO');
+create stream processos_partes_str (ID_PROCESSO_PARTE bigint, ID_PROCESSO_TRF bigint, ID_PESSOA bigint) with (kafka_topic='7cfb0dfca363.DEBEZIUM.PE_TB_PROCESSO_PARTE', value_format='AVRO');
+create stream usuarios_str (ID_USUARIO bigint, DS_NOME string) with (kafka_topic='7cfb0dfca363.DEBEZIUM.PE_TB_USUARIO_LOGIN', value_format='AVRO');
+create stream processo_parte_by_usuario_id_str with (kafka_topic='PARTES_REPART_USER', value_format='AVRO', partitions=1) as select * from processos_partes_str partition by ID_PESSOA;
+print 'PARTES_REPART_USER';
+create stream usuarios_by_id_str with (kafka_topic='USERS_REPART', value_format='AVRO', PARTITIONS=1) as select * from USUARIOS_STR PARTITION BY ID_USUARIO;
+select * from  usuarios_by_id_str emit changes;
+select * from PROCESSO_PARTE_BY_USUARIO_ID_STR emit changes;
+CREATE TABLE USUARIOS_TBL (ID_USUARIO bigint PRIMARY KEY, DS_NOME string) WITH (kafka_topic='USERS_REPART', value_format='AVRO');
+select * from  USUARIOS_TBL emit changes;
+CREATE TABLE PROCESSO_PARTE_BY_USUARIO_TBL (ID_PESSOA bigint PRIMARY KEY, ID_PROCESSO_TRF bigint) WITH (kafka_topic='PARTES_REPART_USER', value_format='AVRO');
+select PP.ID_PROCESSO_TRF, COLLECT_LIST(U.DS_NOME) FROM USUARIOS_TBL U JOIN PROCESSO_PARTE_BY_USUARIO_TBL PP ON U.ID_USUARIO=PP.ID_PESSOA GROUP BY PP.ID_PROCESSO_TRF EMIT CHANGES;

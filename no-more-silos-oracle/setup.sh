@@ -21,59 +21,33 @@ while [ $(curl -s -o /dev/null -w %{http_code} http://localhost:8083/connectors)
 done
 echo -e $(date) "\n\n--------------\n\o/ Kafka Connect is ready! Listener HTTP state: " $(curl -s -o /dev/null -w %{http_code} http://localhost:8083/connectors) "\n--------------\n"
 
-echo -e "\n--\n$(date) +> Creating Kafka Connect Oracle source (XStreams)"
-curl -i -X PUT -H "Accept:application/json" \
-    -H  "Content-Type:application/json" http://localhost:8083/connectors/ora-source-debezium-xstream/config \
+echo -e "\n--\n$(date) +> Creating Kafka Connect Oracle source (Logminer)"
+curl -i -X POST -H "Accept:application/json" \
+    -H  "Content-Type:application/json" http://localhost:8083/connectors \
     -d '{
+          "name": "ora-src-dbz-connector-2",
+          "config": {
             "connector.class": "io.debezium.connector.oracle.OracleConnector",
-            "database.server.name" : "asgard",
-            "database.hostname" : "oracle",
-            "database.port" : "1521",
-            "database.user" : "c##xstrm",
-            "database.password" : "xs",
+            "tasks.max" : "1",
+            "database.server.name" : "7cfb0dfca363",
+            "database.url" : "jdbc:oracle:thin:@172.19.0.2:1521/ORCLCDB",
+            "database.user" : "c##dbzuser",
+            "database.password" : "dbz",
             "database.dbname" : "ORCLCDB",
             "database.pdb.name" : "ORCLPDB1",
-            "database.out.server.name" : "dbzxout",
             "database.history.kafka.bootstrap.servers" : "kafka:29092",
-            "database.history.kafka.topic": "schema-changes.inventory",
+            "database.history.kafka.topic": "schema-changes-inventory",
             "include.schema.changes": "true",
-            "table.blacklist":"ORCLPDB1.AUDSYS.*",
+            "database.connection.adapter": "logminer",
+            "log.mining.strategy": "online_catalog",
             "key.converter": "io.confluent.connect.avro.AvroConverter",
             "key.converter.schema.registry.url": "http://schema-registry:8081",
             "value.converter": "io.confluent.connect.avro.AvroConverter",
-            "value.converter.schema.registry.url": "http://schema-registry:8081",
-            "transforms": "InsertTopic,InsertSourceDetails",
-            "transforms.InsertTopic.type":"org.apache.kafka.connect.transforms.InsertField$Value",
-            "transforms.InsertTopic.topic.field":"messagetopic",
-            "transforms.InsertSourceDetails.type":"org.apache.kafka.connect.transforms.InsertField$Value",
-            "transforms.InsertSourceDetails.static.field":"messagesource",
-            "transforms.InsertSourceDetails.static.value":"Debezium CDC from Oracle on asgard"
-    }'        
-
-echo -e "\n--\n$(date) +> Creating Kafka Connect Oracle source (JDBC)"
-curl -i -X PUT -H "Accept:application/json" \
-    -H  "Content-Type:application/json" http://localhost:8083/connectors/ora-source-jdbc/config/ \
-    -d '{
-            "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
-            "connection.url": "jdbc:oracle:thin:@oracle:1521/ORCLPDB1",
-            "connection.user":"Debezium",
-            "connection.password":"dbz",
-            "numeric.mapping":"best_fit",
-            "mode":"timestamp",
-            "poll.interval.ms":"1000",
-            "validate.non.null":"false",
-            "table.whitelist":"CUSTOMERS",
-            "timestamp.column.name":"UPDATE_TS",
-            "topic.prefix":"ora-",
-            "transforms": "addTopicSuffix,InsertTopic,InsertSourceDetails",
-            "transforms.InsertTopic.type":"org.apache.kafka.connect.transforms.InsertField$Value",
-            "transforms.InsertTopic.topic.field":"messagetopic",
-            "transforms.InsertSourceDetails.type":"org.apache.kafka.connect.transforms.InsertField$Value",
-            "transforms.InsertSourceDetails.static.field":"messagesource",
-            "transforms.InsertSourceDetails.static.value":"JDBC Source Connector from Oracle on asgard",
-            "transforms.addTopicSuffix.type":"org.apache.kafka.connect.transforms.RegexRouter",
-            "transforms.addTopicSuffix.regex":"(.*)",
-            "transforms.addTopicSuffix.replacement":"$1-jdbc"
-        }'
-#
-    
+            "value.converter.schema.registry.url": "http://schema-registry:8081",            
+            "transforms":"unwrap",
+            "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+            "transforms.unwrap.add.fields": "op,table,source.ts_ms",
+            "transforms.unwrap.add.headers": "db",
+            "transforms.unwrap.delete.handling.mode": "rewrite"
+          }
+    }' 

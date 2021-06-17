@@ -65,30 +65,30 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: 'kafka:29092'
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
-      SCHEMA_REGISTRY_LISTENERS: http://schema-registry:8081
 
-  kafka-connect:
+  kafka-connect-local:
     image: confluentinc/cp-kafka-connect-base:6.1.1
-    hostname: kafka-connect
-    container_name: kafka-connect
+    hostname: kafka-connect-local
+    container_name: kafka-connect-local
     depends_on:
       - zookeeper
       - kafka
       - schema-registry
     ports:
-      - 8083:8083
+      - 8084:8084
     environment:
       CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
-      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
-      CONNECT_REST_PORT: 8083
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect-local
+      CONNECT_REST_PORT: 8084
       CONNECT_GROUP_ID: compose-connect-group
       CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
       CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
       CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
-      CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
       CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
-      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schema-registry:8081'
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_LOG4J_ROOT_LOGLEVEL: "INFO"
       CONNECT_LOG4J_APPENDER_STDOUT_LAYOUT_CONVERSIONPATTERN: "[%d] %p %X{connector.context}%m (%c:%L)%n"
       CONNECT_LOG4J_LOGGERS: "org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR"
@@ -136,7 +136,7 @@ services:
     container_name: ksqldb
     depends_on:
       - kafka
-      - kafka-connect
+      - kafka-connect-local
     ports:
       - "8088:8088"
     environment:
@@ -158,26 +158,26 @@ services:
     container_name: ksqldb-cli
     depends_on:
       - kafka
-      - kafka-connect
+      - kafka-connect-local
       - ksqldb
     entrypoint: /bin/sh
     tty: true      
 
 # Other systems
-  oracle:
+  #oracle:
     # You need to build this image first, following the instructions at 
     # https://github.com/oracle/docker-images/blob/master/OracleDatabase/SingleInstance/README.md
-    image: oracle/database:19.3.0-ee
-    container_name: oracle
-    environment:
-      - ORACLE_PWD=top_secret
-    ports:
-      - 1521:1521
-    volumes:
-      - $HOME/oracle/oradata:/opt/oracle/oradata
-      - $HOME/oracle/oradata/recovery_area:/opt/oracle/oradata/recovery_area
-      - $PWD/ora-setup-scripts:/opt/oracle/scripts/setup
-      - $PWD/ora-startup-scripts:/opt/oracle/scripts/startup
+  #  image: oracle/database:19.3.0-ee
+  #  container_name: oracle
+  #  environment:
+   #   - ORACLE_PWD=top_secret
+  #  ports:
+  #    - 1521:1521
+  #  volumes:
+  #    - $HOME/oracle/oradata:/opt/oracle/oradata
+  #    - $HOME/oracle/oradata/recovery_area:/opt/oracle/oradata/recovery_area
+  #    - $PWD/ora-setup-scripts:/opt/oracle/scripts/setup
+  #    - $PWD/ora-startup-scripts:/opt/oracle/scripts/startup
 
   # swingbench:
   #   image: domgiles/swingbench:latest

@@ -1,0 +1,3 @@
+oradata/
+docker-compose.override.yml
+logs.txt
